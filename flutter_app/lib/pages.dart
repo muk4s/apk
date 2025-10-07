@@ -18,23 +18,35 @@ class _ShellPageState extends State<ShellPage> {
   Widget build(BuildContext context) {
     final usersBox = Hive.isBoxOpen('usersBox') ? Hive.box<AppUser>('usersBox') : null;
     final current = usersBox?.get('current');
-    final pages = [
-      AccountPage(current: current, usersBox: usersBox),
-      const RequestsRootPage(),
-      const InfoPage(),
-      const SupportChatPage(),
-    ];
+    // Restrict tabs for support role: only Account + Support
+    final isSupport = current?.role == Role.support;
+    final pages = isSupport
+        ? [
+            AccountPage(current: current, usersBox: usersBox),
+            const SupportChatPage(),
+          ]
+        : [
+            AccountPage(current: current, usersBox: usersBox),
+            const RequestsRootPage(),
+            const InfoPage(),
+            const SupportChatPage(),
+          ];
     return Scaffold(
       body: pages[_index],
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
+        selectedIndex: _index.clamp(0, pages.length - 1),
         onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
-          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Заявки'),
-          NavigationDestination(icon: Icon(Icons.info_outline), selectedIcon: Icon(Icons.info), label: 'Инфо'),
-          NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
-        ],
+        destinations: isSupport
+            ? const [
+                NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
+                NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
+              ]
+            : const [
+                NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
+                NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Заявки'),
+                NavigationDestination(icon: Icon(Icons.info_outline), selectedIcon: Icon(Icons.info), label: 'Инфо'),
+                NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
+              ],
       ),
     );
   }
@@ -57,6 +69,9 @@ class AccountPage extends StatelessWidget {
             Text(current?.displayName ?? 'Гость', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
             Text('Роль: ${current?.role.name ?? 'guest'}'),
+            const SizedBox(height: 8),
+            if (current == null)
+              const Text('Гость: войдите, чтобы отправлять заявки', style: TextStyle(color: Colors.redAccent)),
             const Divider(height: 32),
             if (current?.role == Role.adminUserManager || current?.role == Role.adminSuper) ...[
               Text('Управление пользователями', style: Theme.of(context).textTheme.titleMedium),
@@ -102,6 +117,14 @@ class AccountPage extends StatelessWidget {
           ],
         ),
       ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(16),
+        child: FilledButton.icon(
+          onPressed: () => showDialog(context: context, builder: (_) => const _LoginDialog()),
+          icon: const Icon(Icons.login),
+          label: const Text('Войти'),
+        ),
+      ),
     );
   }
 
@@ -120,6 +143,65 @@ class AccountPage extends StatelessWidget {
         usersBox!.put('current', map[role]!);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Роль переключена на ${role.name}')));
       },
+    );
+  }
+}
+
+class _LoginDialog extends StatefulWidget {
+  const _LoginDialog();
+
+  @override
+  State<_LoginDialog> createState() => _LoginDialogState();
+}
+
+class _LoginDialogState extends State<_LoginDialog> {
+  final _login = TextEditingController();
+  final _pass = TextEditingController();
+  final _form = GlobalKey<FormState>();
+  String? _error;
+
+  @override
+  void dispose() {
+    _login.dispose();
+    _pass.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final users = Hive.box<AppUser>('usersBox');
+    return AlertDialog(
+      title: const Text('Вход'),
+      content: Form(
+        key: _form,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(controller: _login, decoration: const InputDecoration(labelText: 'Логин')), 
+            const SizedBox(height: 8),
+            TextFormField(controller: _pass, decoration: const InputDecoration(labelText: 'Пароль'), obscureText: true),
+            if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, style: const TextStyle(color: Colors.red)))
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+        FilledButton(
+          onPressed: () {
+            final u = users.values.firstWhere(
+              (u) => u.login == _login.text.trim() && u.password == _pass.text,
+              orElse: () => users.get('current')!,
+            );
+            if (u.login != _login.text.trim() || u.password != _pass.text) {
+              setState(() => _error = 'Неверные логин или пароль');
+              return;
+            }
+            users.put('current', u);
+            Navigator.pop(context);
+          },
+          child: const Text('Войти'),
+        )
+      ],
     );
   }
 }
@@ -435,6 +517,11 @@ class _NewRequestPageState extends State<NewRequestPage> {
                 onPressed: () async {
                   if (!_formKey.currentState!.validate()) return;
                   final box = await Hive.openBox<ServiceRequest>(requestsBoxName);
+                  final current = Hive.box<AppUser>('usersBox').get('current');
+                  if (current == null || current.role == Role.user && current.login == 'user') {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Войдите в аккаунт, чтобы отправлять заявки')));
+                    return;
+                  }
                   final req = ServiceRequest(
                     id: UniqueKey().toString(),
                     serviceId: widget.service.id,
@@ -443,10 +530,7 @@ class _NewRequestPageState extends State<NewRequestPage> {
                     createdAt: DateTime.now(),
                     status: RequestStatus.submitted,
                     // для MVP берём текущего пользователя из отдельного бокса (или guest)
-                    requesterUserId: (Hive.isBoxOpen('usersBox')
-                            ? Hive.box<AppUser>('usersBox').get('current')?.id
-                            : null) ??
-                        'guest',
+                    requesterUserId: current.id,
                     assignedModeratorUserId: null,
                     messages: const [],
                   );

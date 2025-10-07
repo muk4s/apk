@@ -23,12 +23,12 @@ Future<void> main() async {
   if (!Hive.isBoxOpen('usersBox')) {
     final users = await Hive.openBox<AppUser>('usersBox');
     // seed demo users and set current = user
-    users.put('u_user', const AppUser(id: 'u_user', login: 'user', displayName: 'Иван Пользователь', role: Role.user));
-    users.put('u_mod', const AppUser(id: 'u_mod', login: 'moderator', displayName: 'Мария Модератор', role: Role.moderator));
-    users.put('u_admin_um', const AppUser(id: 'u_admin_um', login: 'admin-accounts', displayName: 'Админ (учётки)', role: Role.adminUserManager));
-    users.put('u_admin', const AppUser(id: 'u_admin', login: 'admin', displayName: 'Супер‑админ', role: Role.adminSuper));
-    users.put('u_support', const AppUser(id: 'u_support', login: 'support', displayName: 'Служба поддержки', role: Role.support));
-    users.put('current', const AppUser(id: 'u_user', login: 'user', displayName: 'Иван Пользователь', role: Role.user));
+    users.put('u_user', const AppUser(id: 'u_user', login: 'user', displayName: 'Иван Пользователь', role: Role.user, password: 'user123'));
+    users.put('u_mod', const AppUser(id: 'u_mod', login: 'moderator', displayName: 'Мария Модератор', role: Role.moderator, password: 'moderator123'));
+    users.put('u_admin_um', const AppUser(id: 'u_admin_um', login: 'admin-accounts', displayName: 'Админ (учётки)', role: Role.adminUserManager, password: 'adminacc123'));
+    users.put('u_admin', const AppUser(id: 'u_admin', login: 'admin', displayName: 'Супер‑админ', role: Role.adminSuper, password: 'admin123'));
+    users.put('u_support', const AppUser(id: 'u_support', login: 'support', displayName: 'Служба поддержки', role: Role.support, password: 'support123'));
+    users.put('current', const AppUser(id: 'u_user', login: 'user', displayName: 'Иван Пользователь', role: Role.user, password: 'user123'));
   }
   runApp(const EmployeeServicesApp());
 }
