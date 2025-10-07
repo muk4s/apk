@@ -74,7 +74,7 @@ class AccountPage extends StatelessWidget {
               const Text('Гость: войдите, чтобы отправлять заявки', style: TextStyle(color: Colors.redAccent)),
             const Divider(height: 32),
             if (current?.role == Role.adminUserManager || current?.role == Role.adminSuper) ...[
-              Text('Управление пользователями', style: Theme.of(context).textTheme.titleMedium),
+              Text('Админ панель', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -102,18 +102,15 @@ class AccountPage extends StatelessWidget {
               ),
               const Divider(height: 32),
             ],
-            const Text('Сменить роль:'),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                _roleChip(context, Role.user),
-                _roleChip(context, Role.moderator),
-                _roleChip(context, Role.adminUserManager),
-                _roleChip(context, Role.adminSuper),
-                _roleChip(context, Role.support),
-              ],
-            )
+            if (current != null) ...[
+              Text('Предзаданные аккаунты для тестирования:', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              const Text('• admin / admin123 (Супер-админ)'),
+              const Text('• admin-accounts / adminacc123 (Админ учёток)'),
+              const Text('• moderator / moderator123 (Модератор)'),
+              const Text('• support / support123 (Поддержка)'),
+              const Text('• user / user123 (Пользователь)'),
+            ]
           ],
         ),
       ),
@@ -128,23 +125,6 @@ class AccountPage extends StatelessWidget {
     );
   }
 
-  Widget _roleChip(BuildContext context, Role role) {
-    return ActionChip(
-      label: Text(role.name),
-      onPressed: () {
-        if (usersBox == null) return;
-        final map = <Role, AppUser>{
-          Role.user: usersBox!.get('u_user')!,
-          Role.moderator: usersBox!.get('u_mod')!,
-          Role.adminUserManager: usersBox!.get('u_admin_um')!,
-          Role.adminSuper: usersBox!.get('u_admin')!,
-          Role.support: usersBox!.get('u_support')!,
-        };
-        usersBox!.put('current', map[role]!);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Роль переключена на ${role.name}')));
-      },
-    );
-  }
 }
 
 class _LoginDialog extends StatefulWidget {
@@ -282,8 +262,8 @@ class ModeratorQueuePage extends StatelessWidget {
         return ValueListenableBuilder(
           valueListenable: box.listenable(),
           builder: (context, Box<ServiceRequest> b, _) {
-            final entries = b.keys.map((k) => MapEntry(k, b.get(k)!)).where((e) => e.value.status != RequestStatus.approved && e.value.status != RequestStatus.rejected).toList();
-            if (entries.isEmpty) return const Center(child: Text('Очередь пуста'));
+            final entries = b.keys.map((k) => MapEntry(k, b.get(k)!)).toList();
+            if (entries.isEmpty) return const Center(child: Text('Заявок пока нет'));
             return ListView.separated(
               itemCount: entries.length,
               separatorBuilder: (_, __) => const Divider(height: 1),
@@ -295,11 +275,11 @@ class ModeratorQueuePage extends StatelessWidget {
                   margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: ListTile(
                     title: Text(req.serviceTitle),
-                    subtitle: Text('${statusToText(req.status)} • От: ${req.requesterUserId}'),
+                    subtitle: Text('${statusToText(req.status)} • От: ${req.requesterUserId} • Сообщений: ${req.messages.length}'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (!assigned)
+                        if (!assigned && req.status == RequestStatus.submitted)
                           TextButton(
                             onPressed: () async {
                               await b.put(key, req.copyWith(assignedModeratorUserId: me.id, status: RequestStatus.inReview));
@@ -307,20 +287,22 @@ class ModeratorQueuePage extends StatelessWidget {
                             child: const Text('Назначить')
                           ),
                         const SizedBox(width: 4),
-                        IconButton(
-                          tooltip: 'Одобрить',
-                          icon: const Icon(Icons.check_circle, color: Colors.green),
-                          onPressed: () async {
-                            await b.put(key, req.copyWith(status: RequestStatus.approved, assignedModeratorUserId: me.id));
-                          },
-                        ),
-                        IconButton(
-                          tooltip: 'Отклонить',
-                          icon: const Icon(Icons.cancel, color: Colors.red),
-                          onPressed: () async {
-                            await b.put(key, req.copyWith(status: RequestStatus.rejected, assignedModeratorUserId: me.id));
-                          },
-                        ),
+                        if (req.status != RequestStatus.approved)
+                          IconButton(
+                            tooltip: 'Одобрить',
+                            icon: const Icon(Icons.check_circle, color: Colors.green),
+                            onPressed: () async {
+                              await b.put(key, req.copyWith(status: RequestStatus.approved, assignedModeratorUserId: me.id));
+                            },
+                          ),
+                        if (req.status != RequestStatus.rejected)
+                          IconButton(
+                            tooltip: 'Отклонить',
+                            icon: const Icon(Icons.cancel, color: Colors.red),
+                            onPressed: () async {
+                              await b.put(key, req.copyWith(status: RequestStatus.rejected, assignedModeratorUserId: me.id));
+                            },
+                          ),
                       ],
                     ),
                     onTap: () => Navigator.push(
@@ -400,8 +382,22 @@ class _SupportChatViewState extends State<_SupportChatView> {
         final box = Hive.box<Message>('supportChat');
         final usersBox = Hive.box<AppUser>('usersBox');
         final current = usersBox.get('current');
+        final isSupport = current?.role == Role.support;
+        
         return Scaffold(
-          appBar: AppBar(title: const Text('Чат с поддержкой')),
+          appBar: AppBar(
+            title: const Text('Чат с поддержкой'),
+            actions: [
+              if (isSupport)
+                IconButton(
+                  icon: const Icon(Icons.list),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SupportRequestsPage()),
+                  ),
+                ),
+            ],
+          ),
           body: Column(
             children: [
               Expanded(
@@ -469,6 +465,59 @@ class _SupportChatViewState extends State<_SupportChatView> {
           ),
         );
       },
+    );
+  }
+}
+
+class SupportRequestsPage extends StatelessWidget {
+  const SupportRequestsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Запросы пользователей')),
+      body: FutureBuilder(
+        future: Hive.openBox<ServiceRequest>(requestsBoxName),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final box = Hive.box<ServiceRequest>(requestsBoxName);
+          final users = Hive.box<AppUser>('usersBox');
+          final me = users.get('current');
+          final isSupport = me?.role == Role.support;
+          if (!isSupport) {
+            return const Center(child: Text('Доступ только для поддержки'));
+          }
+          return ValueListenableBuilder(
+            valueListenable: box.listenable(),
+            builder: (context, Box<ServiceRequest> b, _) {
+              final entries = b.keys.map((k) => MapEntry(k, b.get(k)!)).toList();
+              if (entries.isEmpty) return const Center(child: Text('Запросов пока нет'));
+              return ListView.separated(
+                itemCount: entries.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final key = entries[index].key as int;
+                  final req = entries[index].value;
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: ListTile(
+                      title: Text(req.serviceTitle),
+                      subtitle: Text('${statusToText(req.status)} • От: ${req.requesterUserId} • Сообщений: ${req.messages.length}'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => RequestDetailsPage(requestKey: key)),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
