@@ -44,7 +44,7 @@ class EmployeeServicesApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         textTheme: GoogleFonts.interTextTheme(),
         useMaterial3: true,
-        cardTheme: const CardTheme(margin: EdgeInsets.all(8)),
+        cardTheme: const CardThemeData(margin: EdgeInsets.all(8)),
       ),
       home: const ShellPage(),
     );

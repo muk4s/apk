@@ -77,7 +77,7 @@ class AccountPage extends StatelessWidget {
                   ElevatedButton.icon(
                     onPressed: () async {
                       // сбросить текущего пользователя на демо-юзера
-                      await usersBox!.put('current', usersBox!.get('u_user'));
+                      await usersBox!.put('current', usersBox!.get('u_user')!);
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Текущий пользователь сброшен')));
                     },
                     icon: const Icon(Icons.restart_alt),
@@ -110,14 +110,14 @@ class AccountPage extends StatelessWidget {
       label: Text(role.name),
       onPressed: () {
         if (usersBox == null) return;
-        final map = {
-          Role.user: usersBox!.get('u_user'),
-          Role.moderator: usersBox!.get('u_mod'),
-          Role.adminUserManager: usersBox!.get('u_admin_um'),
-          Role.adminSuper: usersBox!.get('u_admin'),
-          Role.support: usersBox!.get('u_support'),
+        final map = <Role, AppUser>{
+          Role.user: usersBox!.get('u_user')!,
+          Role.moderator: usersBox!.get('u_mod')!,
+          Role.adminUserManager: usersBox!.get('u_admin_um')!,
+          Role.adminSuper: usersBox!.get('u_admin')!,
+          Role.support: usersBox!.get('u_support')!,
         };
-        usersBox!.put('current', map[role]);
+        usersBox!.put('current', map[role]!);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Роль переключена на ${role.name}')));
       },
     );

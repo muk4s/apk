@@ -41,6 +41,17 @@ enum RequestStatus {
   rejected
 }
 
+class RequestStatusAdapter extends TypeAdapter<RequestStatus> {
+  @override
+  final int typeId = 1;
+
+  @override
+  RequestStatus read(BinaryReader reader) => RequestStatus.values[reader.readByte() as int];
+
+  @override
+  void write(BinaryWriter writer, RequestStatus obj) => writer.writeByte(obj.index);
+}
+
 @HiveType(typeId: 3)
 enum Role {
   @HiveField(0)
