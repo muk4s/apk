@@ -1,0 +1,44 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+coverage/
+build/
+.metadata
+
+# App-specific (scoped to flutter_app folder)
+flutter_app/.dart_tool/
+flutter_app/build/
+flutter_app/.flutter-plugins
+flutter_app/.flutter-plugins-dependencies
+flutter_app/.metadata
+
+# Android
+**/android/.gradle/
+**/android/local.properties
+**/android/app/**/key.properties
+**/android/app/**/key.jks
+**/android/app/**/upload-keystore.jks
+
+# iOS/macOS (if added later)
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/.last_build_id
+**/macos/Flutter/ephemeral/
+**/macos/Pods/
+
+# Windows/Linux ephemeral
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+
