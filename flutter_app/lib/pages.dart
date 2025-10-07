@@ -82,7 +82,7 @@ class AccountPage extends StatelessWidget {
                   ElevatedButton.icon(
                     onPressed: () async {
                       final id = 'u_${DateTime.now().millisecondsSinceEpoch}';
-                      final u = AppUser(id: id, login: 'user$id', displayName: 'Пользователь $id', role: Role.user);
+                      final u = AppUser(id: id, login: 'user$id', displayName: 'Пользователь $id', role: Role.user, password: 'user$id');
                       await usersBox!.put(id, u);
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Создан новый пользователь')));
                     },
