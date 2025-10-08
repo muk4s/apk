@@ -7,7 +7,6 @@ import 'models.dart';
 
 const String requestsBoxName = 'requestsBox';
 
-// Вспомогательная функция для получения ImageProvider
 ImageProvider? getAvatarImageProvider(String? avatarPath) {
   if (avatarPath == null || avatarPath.isEmpty) return null;
   
@@ -68,10 +67,19 @@ class _ShellPageState extends State<ShellPage> {
 
   _TabsData _getTabsForRole(Role? role, bool isAuthorized, AppUser? current, Box<AppUser> usersBox) {
     if (!isAuthorized || role == null) {
+
       return _TabsData(
-        pages: [AccountPage(current: null, usersBox: usersBox)],
+        pages: [
+          AccountPage(current: null, usersBox: usersBox),
+          const RequestsRootPage(),
+          const InfoPage(),
+          const SupportChatPage(),
+        ],
         destinations: const [
           NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
+          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Заявки'),
+          NavigationDestination(icon: Icon(Icons.info_outline), selectedIcon: Icon(Icons.info), label: 'Инфо'),
+          NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
         ],
       );
     }
