@@ -23,12 +23,58 @@ Future<void> main() async {
   if (!Hive.isBoxOpen('usersBox')) {
     final users = await Hive.openBox<AppUser>('usersBox');
     // seed demo users and set current = user
-    users.put('u_user', const AppUser(id: 'u_user', login: 'user', displayName: 'Иван Пользователь', role: Role.user, password: 'user123'));
-    users.put('u_mod', const AppUser(id: 'u_mod', login: 'moderator', displayName: 'Мария Модератор', role: Role.moderator, password: 'moderator123'));
-    users.put('u_admin_um', const AppUser(id: 'u_admin_um', login: 'admin-accounts', displayName: 'Админ (учётки)', role: Role.adminUserManager, password: 'adminacc123'));
-    users.put('u_admin', const AppUser(id: 'u_admin', login: 'admin', displayName: 'Супер‑админ', role: Role.adminSuper, password: 'admin123'));
-    users.put('u_support', const AppUser(id: 'u_support', login: 'support', displayName: 'Служба поддержки', role: Role.support, password: 'support123'));
-    users.put('current', const AppUser(id: 'u_user', login: 'user', displayName: 'Иван Пользователь', role: Role.user, password: 'user123'));
+    users.put('u_user', const AppUser(
+      id: 'u_user', 
+      login: 'user', 
+      displayName: 'Иван Пользователь', 
+      role: Role.user, 
+      password: 'user123',
+      avatarUrl: 'https://i.pravatar.cc/150?img=1',
+      position: 'Специалист по продажам'
+    ));
+    users.put('u_mod', const AppUser(
+      id: 'u_mod', 
+      login: 'moderator', 
+      displayName: 'Мария Модератор', 
+      role: Role.moderator, 
+      password: 'moderator123',
+      avatarUrl: 'https://i.pravatar.cc/150?img=2',
+      position: 'Модератор заявок'
+    ));
+    users.put('u_admin_um', const AppUser(
+      id: 'u_admin_um', 
+      login: 'admin-accounts', 
+      displayName: 'Админ (учётки)', 
+      role: Role.adminUserManager, 
+      password: 'adminacc123',
+      avatarUrl: 'https://i.pravatar.cc/150?img=3',
+      position: 'Администратор учётных записей'
+    ));
+    users.put('u_admin', const AppUser(
+      id: 'u_admin', 
+      login: 'admin', 
+      displayName: 'Супер‑админ', 
+      role: Role.adminSuper, 
+      password: 'admin123',
+      avatarUrl: 'https://i.pravatar.cc/150?img=4',
+      position: 'Системный администратор'
+    ));
+    users.put('u_support', const AppUser(
+      id: 'u_support', 
+      login: 'support', 
+      displayName: 'Служба поддержки', 
+      role: Role.support, 
+      password: 'support123',
+      avatarUrl: 'https://i.pravatar.cc/150?img=5',
+      position: 'Специалист поддержки'
+    ));
+    users.put('current', const AppUser(
+      id: 'guest',
+      login: 'guest',
+      displayName: 'Гость',
+      role: Role.user,
+      password: '',
+    ));
   }
   runApp(const EmployeeServicesApp());
 }

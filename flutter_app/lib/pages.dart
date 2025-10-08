@@ -12,43 +12,91 @@ class ShellPage extends StatefulWidget {
 }
 
 class _ShellPageState extends State<ShellPage> {
-  int _index = 1; // default to Requests
+  int _index = 0; // default to Account
 
   @override
   Widget build(BuildContext context) {
     final usersBox = Hive.isBoxOpen('usersBox') ? Hive.box<AppUser>('usersBox') : null;
-    final current = usersBox?.get('current');
-    // Restrict tabs for support role: only Account + Support
-    final isSupport = current?.role == Role.support;
-    final pages = isSupport
-        ? [
-            AccountPage(current: current, usersBox: usersBox),
-            const SupportChatPage(),
-          ]
-        : [
-            AccountPage(current: current, usersBox: usersBox),
-            const RequestsRootPage(),
-            const InfoPage(),
-            const SupportChatPage(),
-          ];
-    return Scaffold(
-      body: pages[_index],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index.clamp(0, pages.length - 1),
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: isSupport
-            ? const [
-                NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
-                NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
+    
+    if (usersBox == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    
+    return ValueListenableBuilder(
+      valueListenable: usersBox.listenable(),
+      builder: (context, Box<AppUser> box, _) {
+        final current = box.get('current');
+        final isAuthorized = current != null && current.id != 'guest';
+        // Restrict tabs for support role: only Account + Support
+        final isSupport = current?.role == Role.support;
+        final pages = isSupport
+            ? [
+                AccountPage(current: isAuthorized ? current : null, usersBox: usersBox),
+                const SupportChatPage(),
               ]
-            : const [
-                NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
-                NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Заявки'),
-                NavigationDestination(icon: Icon(Icons.info_outline), selectedIcon: Icon(Icons.info), label: 'Инфо'),
-                NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
-              ],
-      ),
+            : [
+                AccountPage(current: isAuthorized ? current : null, usersBox: usersBox),
+                const RequestsRootPage(),
+                const InfoPage(),
+                const SupportChatPage(),
+              ];
+        return Scaffold(
+          body: pages[_index],
+          bottomNavigationBar: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              NavigationBar(
+                selectedIndex: _index.clamp(0, pages.length - 1),
+                onDestinationSelected: (i) => setState(() => _index = i),
+                destinations: isSupport
+                    ? const [
+                        NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
+                        NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
+                      ]
+                    : const [
+                        NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
+                        NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Заявки'),
+                        NavigationDestination(icon: Icon(Icons.info_outline), selectedIcon: Icon(Icons.info), label: 'Инфо'),
+                        NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
+                      ],
+              ),
+              // Кнопка выхода для авторизованных пользователей
+              if (isAuthorized)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _logout(context, usersBox),
+                      icon: const Icon(Icons.logout),
+                      label: const Text('Выйти'),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
+  }
+
+  void _logout(BuildContext context, Box<AppUser>? usersBox) async {
+    if (usersBox != null) {
+      await usersBox.put('current', const AppUser(
+        id: 'guest',
+        login: 'guest',
+        displayName: 'Гость',
+        role: Role.user,
+        password: '',
+      ));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Вы вышли из системы')),
+        );
+      }
+    }
   }
 }
 
@@ -61,74 +109,183 @@ class AccountPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Мой аккаунт')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(current?.displayName ?? 'Гость', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            Text('Роль: ${current?.role.name ?? 'guest'}'),
-            const SizedBox(height: 8),
-            if (current == null)
-              const Text('Гость: войдите, чтобы отправлять заявки', style: TextStyle(color: Colors.redAccent)),
-            const Divider(height: 32),
-            if (current?.role == Role.adminUserManager || current?.role == Role.adminSuper) ...[
-              Text('Админ панель', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      final id = 'u_${DateTime.now().millisecondsSinceEpoch}';
-                      final u = AppUser(id: id, login: 'user$id', displayName: 'Пользователь $id', role: Role.user, password: 'user$id');
-                      await usersBox!.put(id, u);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Создан новый пользователь')));
-                    },
-                    icon: const Icon(Icons.person_add),
-                    label: const Text('Создать пользователя'),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      // сбросить текущего пользователя на демо-юзера
-                      await usersBox!.put('current', usersBox!.get('u_user')!);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Текущий пользователь сброшен')));
-                    },
-                    icon: const Icon(Icons.restart_alt),
-                    label: const Text('Сброс текущего'),
-                  ),
-                ],
-              ),
-              const Divider(height: 32),
-            ],
-            if (current != null) ...[
-              Text('Предзаданные аккаунты для тестирования:', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              const Text('• admin / admin123 (Супер-админ)'),
-              const Text('• admin-accounts / adminacc123 (Админ учёток)'),
-              const Text('• moderator / moderator123 (Модератор)'),
-              const Text('• support / support123 (Поддержка)'),
-              const Text('• user / user123 (Пользователь)'),
-            ]
-          ],
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16),
-        child: FilledButton.icon(
-          onPressed: () => showDialog(context: context, builder: (_) => const _LoginDialog()),
-          icon: const Icon(Icons.login),
-          label: const Text('Войти'),
-        ),
+      body: current == null ? _buildUnauthorizedView(context) : _buildAuthorizedView(context),
+    );
+  }
+
+  Widget _buildUnauthorizedView(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.person_outline,
+            size: 80,
+            color: Colors.grey,
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Авторизация',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Войдите в систему, чтобы отправлять заявки',
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 32),
+          FilledButton.icon(
+            onPressed: () => showDialog(context: context, builder: (_) => const _LoginDialog()),
+            icon: const Icon(Icons.login),
+            label: const Text('Войти'),
+          ),
+        ],
       ),
     );
   }
 
+  Widget _buildAuthorizedView(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Профиль пользователя
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundImage: current!.avatarUrl != null 
+                        ? NetworkImage(current!.avatarUrl!)
+                        : null,
+                    child: current!.avatarUrl == null 
+                        ? const Icon(Icons.person, size: 40)
+                        : null,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          current!.displayName,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: 4),
+                        if (current!.position != null) ...[
+                          Text(
+                            current!.position!,
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        Chip(
+                          label: Text(_getRoleDisplayName(current!.role)),
+                          backgroundColor: _getRoleColor(current!.role).shade100,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          
+          // Админ панель
+          if (current!.role == Role.adminUserManager || current!.role == Role.adminSuper) ...[
+            Text('Админ панель', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final id = 'u_${DateTime.now().millisecondsSinceEpoch}';
+                    final u = AppUser(
+                      id: id, 
+                      login: 'user$id', 
+                      displayName: 'Пользователь $id', 
+                      role: Role.user, 
+                      password: 'user$id',
+                      avatarUrl: 'https://i.pravatar.cc/150?img=${DateTime.now().millisecondsSinceEpoch % 10}',
+                      position: 'Новый сотрудник'
+                    );
+                    await usersBox!.put(id, u);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Создан новый пользователь')));
+                  },
+                  icon: const Icon(Icons.person_add),
+                  label: const Text('Создать пользователя'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    // сбросить текущего пользователя на демо-юзера
+                    await usersBox!.put('current', usersBox!.get('u_user')!);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Текущий пользователь сброшен')));
+                  },
+                  icon: const Icon(Icons.restart_alt),
+                  label: const Text('Сброс текущего'),
+                ),
+              ],
+            ),
+            const Divider(height: 32),
+          ],
+          
+          // Информация о тестовых аккаунтах - только для админа учёток
+          if (current!.role == Role.adminUserManager) ...[
+            Text('Предзаданные аккаунты для тестирования:', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            const Text('• admin / admin123 (Супер-админ)'),
+            const Text('• admin-accounts / adminacc123 (Админ учёток)'),
+            const Text('• moderator / moderator123 (Модератор)'),
+            const Text('• support / support123 (Поддержка)'),
+            const Text('• user / user123 (Пользователь)'),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _getRoleDisplayName(Role role) {
+    switch (role) {
+      case Role.user:
+        return 'Пользователь';
+      case Role.moderator:
+        return 'Модератор';
+      case Role.adminUserManager:
+        return 'Админ учёток';
+      case Role.adminSuper:
+        return 'Супер-админ';
+      case Role.support:
+        return 'Поддержка';
+    }
+  }
+
+  MaterialColor _getRoleColor(Role role) {
+    switch (role) {
+      case Role.user:
+        return Colors.blue;
+      case Role.moderator:
+        return Colors.orange;
+      case Role.adminUserManager:
+        return Colors.purple;
+      case Role.adminSuper:
+        return Colors.red;
+      case Role.support:
+        return Colors.green;
+    }
+  }
 }
 
 class _LoginDialog extends StatefulWidget {
-  const _LoginDialog();
+  const _LoginDialog({super.key});
 
   @override
   State<_LoginDialog> createState() => _LoginDialogState();
@@ -170,7 +327,7 @@ class _LoginDialogState extends State<_LoginDialog> {
           onPressed: () {
             final u = users.values.firstWhere(
               (u) => u.login == _login.text.trim() && u.password == _pass.text,
-              orElse: () => users.get('current')!,
+              orElse: () => const AppUser(id: 'invalid', login: 'invalid', displayName: 'Invalid', role: Role.user, password: 'invalid'),
             );
             if (u.login != _login.text.trim() || u.password != _pass.text) {
               setState(() => _error = 'Неверные логин или пароль');
@@ -178,6 +335,12 @@ class _LoginDialogState extends State<_LoginDialog> {
             }
             users.put('current', u);
             Navigator.pop(context);
+            // Обновляем состояние родительского виджета
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Добро пожаловать, ${u.displayName}!')),
+              );
+            }
           },
           child: const Text('Войти'),
         )

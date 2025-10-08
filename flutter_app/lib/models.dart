@@ -78,6 +78,10 @@ class AppUser {
   final Role role;
   @HiveField(4)
   final String password; // demo only
+  @HiveField(5)
+  final String? avatarUrl; // URL аватарки
+  @HiveField(6)
+  final String? position; // должность
 
   const AppUser({
     required this.id,
@@ -85,6 +89,8 @@ class AppUser {
     required this.displayName,
     required this.role,
     required this.password,
+    this.avatarUrl,
+    this.position,
   });
 }
 
@@ -104,13 +110,15 @@ class AppUserAdapter extends TypeAdapter<AppUser> {
       displayName: fields[2] as String,
       role: fields[3] as Role,
       password: fields[4] as String,
+      avatarUrl: fields[5] as String?,
+      position: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, AppUser obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -120,7 +128,11 @@ class AppUserAdapter extends TypeAdapter<AppUser> {
       ..writeByte(3)
       ..write(obj.role)
       ..writeByte(4)
-      ..write(obj.password);
+      ..write(obj.password)
+      ..writeByte(5)
+      ..write(obj.avatarUrl)
+      ..writeByte(6)
+      ..write(obj.position);
   }
 }
 
