@@ -4,28 +4,270 @@ import 'package:hive/hive.dart';
 // Simple catalog of services offered to employees
 @immutable
 class Service {
-  const Service({required this.id, required this.title, required this.description});
+  const Service({
+    required this.id, 
+    required this.title, 
+    required this.description,
+    this.subcategories = const [],
+  });
   final String id;
   final String title;
   final String description;
+  final List<Service> subcategories;
 }
 
 // Predefined demo services (can be replaced by API later)
 const List<Service> kDemoServices = [
+  // 1. Кадровые документы и справки
   Service(
-    id: 'sick_leave',
-    title: 'Оформление больничного',
-    description: 'Заявка на подтверждение и выплату больничного листа.',
+    id: 'hr_documents',
+    title: 'Кадровые документы',
+    description: 'Справки, копии документов, трудовая книжка',
+    subcategories: [
+      Service(
+        id: 'hr_doc_2ndfl',
+        title: 'Справка 2-НДФЛ',
+        description: 'Запрос справки о доходах для налоговой',
+      ),
+      Service(
+        id: 'hr_doc_work_confirm',
+        title: 'Справка с места работы',
+        description: 'Подтверждение трудоустройства для банка, визы и т.д.',
+      ),
+      Service(
+        id: 'hr_doc_work_book',
+        title: 'Выписка из трудовой книжки',
+        description: 'Копия или выписка из трудовой книжки',
+      ),
+      Service(
+        id: 'hr_doc_salary',
+        title: 'Справка о заработной плате',
+        description: 'Справка о размере зарплаты за период',
+      ),
+      Service(
+        id: 'hr_doc_experience',
+        title: 'Справка о стаже',
+        description: 'Подтверждение трудового стажа на предприятии',
+      ),
+    ],
   ),
+  
+  // 2. Отпуска
   Service(
     id: 'vacation',
-    title: 'Отпуск',
-    description: 'Оформление отпуска с указанием дат и типа.',
+    title: 'Отпуска',
+    description: 'Оформление всех видов отпусков',
+    subcategories: [
+      Service(
+        id: 'vacation_regular',
+        title: 'Ежегодный оплачиваемый отпуск',
+        description: 'Основной отпуск согласно трудовому договору',
+      ),
+      Service(
+        id: 'vacation_unpaid',
+        title: 'Отпуск без сохранения зарплаты',
+        description: 'Неоплачиваемый отпуск по личным обстоятельствам',
+      ),
+      Service(
+        id: 'vacation_study',
+        title: 'Учебный отпуск',
+        description: 'Отпуск для сдачи экзаменов или защиты диплома',
+      ),
+      Service(
+        id: 'vacation_additional',
+        title: 'Дополнительный отпуск',
+        description: 'Дополнительные дни отпуска за вредные условия труда',
+      ),
+    ],
   ),
+  
+  // 3. Больничные и медицина
   Service(
-    id: 'child_support',
-    title: 'Поддержка семьи',
-    description: 'Матпомощь, ДМС, детские выплаты и т.п.',
+    id: 'medical',
+    title: 'Больничные и медицина',
+    description: 'Оформление больничных листов и медицинских услуг',
+    subcategories: [
+      Service(
+        id: 'medical_sick_leave',
+        title: 'Больничный лист',
+        description: 'Оформление и оплата больничного листа',
+      ),
+      Service(
+        id: 'medical_child_care',
+        title: 'Больничный по уходу за ребенком',
+        description: 'Оформление больничного по уходу за больным ребенком',
+      ),
+      Service(
+        id: 'medical_injury',
+        title: 'Производственная травма',
+        description: 'Оформление больничного при производственной травме',
+      ),
+      Service(
+        id: 'medical_checkup',
+        title: 'Медосмотр',
+        description: 'Запись на обязательный медицинский осмотр',
+      ),
+      Service(
+        id: 'medical_dms',
+        title: 'ДМС (добровольное медстрахование)',
+        description: 'Оформление полиса ДМС для сотрудника',
+      ),
+    ],
+  ),
+  
+  // 4. Социальные льготы и выплаты
+  Service(
+    id: 'social_benefits',
+    title: 'Социальные льготы',
+    description: 'Материальная помощь, компенсации, льготы',
+    subcategories: [
+      Service(
+        id: 'social_maternity',
+        title: 'Материальная помощь при рождении',
+        description: 'Единовременная выплата при рождении ребенка',
+      ),
+      Service(
+        id: 'social_child_payments',
+        title: 'Детские пособия',
+        description: 'Ежемесячные выплаты на детей сотрудников',
+      ),
+      Service(
+        id: 'social_kindergarten',
+        title: 'Компенсация за детский сад',
+        description: 'Частичная компенсация расходов на детский сад',
+      ),
+      Service(
+        id: 'social_financial_aid',
+        title: 'Материальная помощь',
+        description: 'Единовременная материальная помощь в трудной ситуации',
+      ),
+      Service(
+        id: 'social_funeral',
+        title: 'Похоронное пособие',
+        description: 'Материальная помощь на погребение',
+      ),
+      Service(
+        id: 'social_gifts',
+        title: 'Подарки детям сотрудников',
+        description: 'Новогодние подарки и праздничные мероприятия',
+      ),
+    ],
+  ),
+  
+  // 5. Обучение и развитие
+  Service(
+    id: 'training',
+    title: 'Обучение и развитие',
+    description: 'Курсы, тренинги, повышение квалификации',
+    subcategories: [
+      Service(
+        id: 'training_courses',
+        title: 'Профессиональные курсы',
+        description: 'Запрос на обучение за счет предприятия',
+      ),
+      Service(
+        id: 'training_certification',
+        title: 'Сертификация',
+        description: 'Прохождение профессиональной сертификации',
+      ),
+      Service(
+        id: 'training_conference',
+        title: 'Участие в конференции',
+        description: 'Командировка на профессиональную конференцию',
+      ),
+      Service(
+        id: 'training_education',
+        title: 'Высшее образование',
+        description: 'Компенсация расходов на обучение в ВУЗе',
+      ),
+    ],
+  ),
+  
+  // 6. Рабочее место и условия труда
+  Service(
+    id: 'workplace',
+    title: 'Рабочее место',
+    description: 'Оборудование, условия труда, график работы',
+    subcategories: [
+      Service(
+        id: 'workplace_equipment',
+        title: 'Заказ оборудования',
+        description: 'Запрос на выдачу рабочего оборудования',
+      ),
+      Service(
+        id: 'workplace_repair',
+        title: 'Ремонт оборудования',
+        description: 'Заявка на ремонт неисправного оборудования',
+      ),
+      Service(
+        id: 'workplace_schedule',
+        title: 'Изменение графика работы',
+        description: 'Запрос на изменение рабочего графика',
+      ),
+      Service(
+        id: 'workplace_remote',
+        title: 'Удаленная работа',
+        description: 'Оформление удаленного формата работы',
+      ),
+      Service(
+        id: 'workplace_parking',
+        title: 'Парковочное место',
+        description: 'Запрос на выделение парковочного места',
+      ),
+    ],
+  ),
+  
+  // 7. Пенсия и увольнение
+  Service(
+    id: 'retirement',
+    title: 'Пенсия и увольнение',
+    description: 'Оформление пенсии, увольнение, расчет',
+    subcategories: [
+      Service(
+        id: 'retirement_pension',
+        title: 'Оформление пенсии',
+        description: 'Подготовка документов для выхода на пенсию',
+      ),
+      Service(
+        id: 'retirement_resignation',
+        title: 'Увольнение по собственному желанию',
+        description: 'Оформление увольнения и расчета',
+      ),
+      Service(
+        id: 'retirement_agreement',
+        title: 'Увольнение по соглашению сторон',
+        description: 'Расторжение трудового договора по соглашению',
+      ),
+    ],
+  ),
+  
+  // 8. Прочие обращения
+  Service(
+    id: 'other',
+    title: 'Другие вопросы',
+    description: 'Прочие обращения в отдел кадров',
+    subcategories: [
+      Service(
+        id: 'other_complaint',
+        title: 'Жалоба или предложение',
+        description: 'Обращение с жалобой или предложением по улучшению',
+      ),
+      Service(
+        id: 'other_transfer',
+        title: 'Перевод на другую должность',
+        description: 'Запрос на перевод внутри предприятия',
+      ),
+      Service(
+        id: 'other_personal_data',
+        title: 'Изменение персональных данных',
+        description: 'Обновление личной информации в кадровых документах',
+      ),
+      Service(
+        id: 'other_question',
+        title: 'Общий вопрос',
+        description: 'Консультация по кадровым вопросам',
+      ),
+    ],
   ),
 ];
 
@@ -298,6 +540,89 @@ class ServiceRequestAdapter extends TypeAdapter<ServiceRequest> {
       ..write(obj.assignedModeratorUserId)
       ..writeByte(8)
       ..write(obj.messages);
+  }
+}
+
+@HiveType(typeId: 6)
+class SupportTicket {
+  @HiveField(0)
+  final String id; // uuid
+  @HiveField(1)
+  final String userId; // кто создал тикет
+  @HiveField(2)
+  final String userName; // имя пользователя
+  @HiveField(3)
+  final String subject; // тема обращения
+  @HiveField(4)
+  final DateTime createdAt;
+  @HiveField(5)
+  final List<Message> messages;
+  @HiveField(6)
+  final bool isResolved; // решён ли запрос
+
+  const SupportTicket({
+    required this.id,
+    required this.userId,
+    required this.userName,
+    required this.subject,
+    required this.createdAt,
+    this.messages = const [],
+    this.isResolved = false,
+  });
+
+  SupportTicket copyWith({
+    List<Message>? messages,
+    bool? isResolved,
+  }) => SupportTicket(
+        id: id,
+        userId: userId,
+        userName: userName,
+        subject: subject,
+        createdAt: createdAt,
+        messages: messages ?? this.messages,
+        isResolved: isResolved ?? this.isResolved,
+      );
+}
+
+class SupportTicketAdapter extends TypeAdapter<SupportTicket> {
+  @override
+  final int typeId = 6;
+
+  @override
+  SupportTicket read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return SupportTicket(
+      id: fields[0] as String,
+      userId: fields[1] as String,
+      userName: fields[2] as String,
+      subject: fields[3] as String,
+      createdAt: fields[4] as DateTime,
+      messages: (fields[5] as List).cast<Message>(),
+      isResolved: fields[6] as bool? ?? false,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, SupportTicket obj) {
+    writer
+      ..writeByte(7)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.userId)
+      ..writeByte(2)
+      ..write(obj.userName)
+      ..writeByte(3)
+      ..write(obj.subject)
+      ..writeByte(4)
+      ..write(obj.createdAt)
+      ..writeByte(5)
+      ..write(obj.messages)
+      ..writeByte(6)
+      ..write(obj.isResolved);
   }
 }
 

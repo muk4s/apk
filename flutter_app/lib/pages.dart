@@ -7,6 +7,7 @@ import 'models.dart';
 
 const String requestsBoxName = 'requestsBox';
 
+// Вспомогательная функция для получения ImageProvider
 ImageProvider? getAvatarImageProvider(String? avatarPath) {
   if (avatarPath == null || avatarPath.isEmpty) return null;
   
@@ -67,7 +68,7 @@ class _ShellPageState extends State<ShellPage> {
 
   _TabsData _getTabsForRole(Role? role, bool isAuthorized, AppUser? current, Box<AppUser> usersBox) {
     if (!isAuthorized || role == null) {
-
+      // Неавторизованный пользователь видит те же вкладки, что и обычный пользователь
       return _TabsData(
         pages: [
           AccountPage(current: null, usersBox: usersBox),
@@ -160,59 +161,46 @@ class AccountPage extends StatelessWidget {
 
   Widget _buildUnauthorizedView(BuildContext context) {
     return Center(
-      child: TweenAnimationBuilder<double>(
-        duration: const Duration(milliseconds: 800),
-        tween: Tween(begin: 0.0, end: 1.0),
-        builder: (context, value, child) {
-          return Opacity(
-            opacity: value,
-            child: Transform.translate(
-              offset: Offset(0, 20 * (1 - value)),
-              child: child,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+              shape: BoxShape.circle,
             ),
-          );
-        },
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-                shape: BoxShape.circle,
+            child: Icon(
+              Icons.person_outline,
+              size: 80,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'Авторизация',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48),
+            child: Text(
+              'Войдите в систему, чтобы отправлять заявки',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.grey[600],
               ),
-              child: Icon(
-                Icons.person_outline,
-                size: 80,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
-            Text(
-              'Авторизация',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 48),
-              child: Text(
-                'Войдите в систему, чтобы отправлять заявки',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 32),
-            FilledButton.icon(
-              onPressed: () => showDialog(context: context, builder: (_) => const _LoginDialog()),
-              icon: const Icon(Icons.login),
-              label: const Text('Войти'),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 32),
+          FilledButton.icon(
+            onPressed: () => showDialog(context: context, builder: (_) => const _LoginDialog()),
+            icon: const Icon(Icons.login),
+            label: const Text('Войти'),
+          ),
+        ],
       ),
     );
   }
@@ -224,93 +212,77 @@ class AccountPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Профиль пользователя с анимацией
-            TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 600),
-              tween: Tween(begin: 0.0, end: 1.0),
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Transform.scale(
-                    scale: 0.8 + (0.2 * value),
-                    child: child,
+          // Профиль пользователя
+          Card(
+            elevation: 4,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                          blurRadius: 12,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: 40,
+                      backgroundImage: getAvatarImageProvider(current!.avatarUrl),
+                      child: current!.avatarUrl == null 
+                          ? const Icon(Icons.person, size: 40)
+                          : null,
+                    ),
                   ),
-                );
-              },
-              child: Card(
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      Hero(
-                        tag: 'user_avatar',
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                                blurRadius: 12,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: CircleAvatar(
-                            radius: 40,
-                            backgroundImage: getAvatarImageProvider(current!.avatarUrl),
-                            child: current!.avatarUrl == null 
-                                ? const Icon(Icons.person, size: 40)
-                                : null,
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          current!.displayName,
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              current!.displayName,
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            if (current!.position != null) ...[
-                              Row(
-                                children: [
-                                  Icon(Icons.work_outline, size: 16, color: Colors.grey[600]),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      current!.position!,
-                                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
+                        const SizedBox(height: 6),
+                        if (current!.position != null) ...[
+                          Row(
+                            children: [
+                              Icon(Icons.work_outline, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  current!.position!,
+                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: Colors.grey[600],
                                   ),
-                                ],
+                                ),
                               ),
-                              const SizedBox(height: 8),
                             ],
-                            Chip(
-                              avatar: Icon(
-                                Icons.shield_outlined,
-                                size: 18,
-                                color: _getRoleColor(current!.role),
-                              ),
-                              label: Text(_getRoleDisplayName(current!.role)),
-                              backgroundColor: _getRoleColor(current!.role).shade100,
-                            ),
-                          ],
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        Chip(
+                          avatar: Icon(
+                            Icons.shield_outlined,
+                            size: 18,
+                            color: _getRoleColor(current!.role),
+                          ),
+                          label: Text(_getRoleDisplayName(current!.role)),
+                          backgroundColor: _getRoleColor(current!.role).shade100,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
+          ),
             const SizedBox(height: 16),
             
             // Кнопка редактирования профиля
@@ -332,20 +304,7 @@ class AccountPage extends StatelessWidget {
               spacing: 8,
               children: [
                 ElevatedButton.icon(
-                  onPressed: () async {
-                    final id = 'u_${DateTime.now().millisecondsSinceEpoch}';
-                    final u = AppUser(
-                      id: id, 
-                      login: 'user$id', 
-                      displayName: 'Пользователь $id', 
-                      role: Role.user, 
-                      password: 'user$id',
-                      avatarUrl: 'https://i.pravatar.cc/150?img=${DateTime.now().millisecondsSinceEpoch % 10}',
-                      position: 'Новый сотрудник'
-                    );
-                    await usersBox!.put(id, u);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Создан новый пользователь')));
-                  },
+                  onPressed: () => _showCreateUserDialog(context),
                   icon: const Icon(Icons.person_add),
                   label: const Text('Создать пользователя'),
                 ),
@@ -416,6 +375,13 @@ class AccountPage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => _EditProfileDialog(current: current!, usersBox: usersBox!),
+    );
+  }
+
+  void _showCreateUserDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => _CreateUserDialog(usersBox: usersBox!),
     );
   }
 
@@ -621,6 +587,216 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
   }
 }
 
+class _CreateUserDialog extends StatefulWidget {
+  const _CreateUserDialog({super.key, required this.usersBox});
+  final Box<AppUser> usersBox;
+
+  @override
+  State<_CreateUserDialog> createState() => _CreateUserDialogState();
+}
+
+class _CreateUserDialogState extends State<_CreateUserDialog> {
+  final _displayNameController = TextEditingController();
+  final _positionController = TextEditingController();
+  final _loginController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _form = GlobalKey<FormState>();
+  Role _selectedRole = Role.user;
+  String? _avatarPath;
+  final ImagePicker _picker = ImagePicker();
+
+  @override
+  void dispose() {
+    _displayNameController.dispose();
+    _positionController.dispose();
+    _loginController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        final Directory appDir = await getApplicationDocumentsDirectory();
+        final String fileName = 'avatar_new_user_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final String newPath = '${appDir.path}/$fileName';
+        await File(image.path).copy(newPath);
+        setState(() => _avatarPath = newPath);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка при выборе изображения: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Создать пользователя'),
+      content: Form(
+        key: _form,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Аватарка
+              Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundImage: _avatarPath != null ? FileImage(File(_avatarPath!)) : null,
+                    child: _avatarPath == null ? const Icon(Icons.person, size: 50) : null,
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                        onPressed: _pickImage,
+                        tooltip: 'Выбрать фото',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // ФИО
+              TextFormField(
+                controller: _displayNameController,
+                decoration: const InputDecoration(
+                  labelText: 'ФИО',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите ФИО' : null,
+              ),
+              const SizedBox(height: 12),
+              // Должность
+              TextFormField(
+                controller: _positionController,
+                decoration: const InputDecoration(
+                  labelText: 'Должность',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.work),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите должность' : null,
+              ),
+              const SizedBox(height: 12),
+              // Логин
+              TextFormField(
+                controller: _loginController,
+                decoration: const InputDecoration(
+                  labelText: 'Логин',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.account_circle),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Введите логин';
+                  // Проверка на уникальность логина
+                  final exists = widget.usersBox.values.any((u) => u.login == v.trim());
+                  if (exists) return 'Логин уже существует';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              // Пароль
+              TextFormField(
+                controller: _passwordController,
+                decoration: const InputDecoration(
+                  labelText: 'Пароль',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.lock),
+                ),
+                obscureText: true,
+                validator: (v) => (v == null || v.length < 4) ? 'Минимум 4 символа' : null,
+              ),
+              const SizedBox(height: 12),
+              // Роль
+              DropdownButtonFormField<Role>(
+                value: _selectedRole,
+                decoration: const InputDecoration(
+                  labelText: 'Роль',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.shield),
+                ),
+                items: Role.values.map((role) {
+                  return DropdownMenuItem(
+                    value: role,
+                    child: Text(_getRoleText(role)),
+                  );
+                }).toList(),
+                onChanged: (value) => setState(() => _selectedRole = value!),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: () async {
+            if (!_form.currentState!.validate()) return;
+            
+            final id = 'u_${DateTime.now().millisecondsSinceEpoch}';
+            final newUser = AppUser(
+              id: id,
+              login: _loginController.text.trim(),
+              displayName: _displayNameController.text.trim(),
+              role: _selectedRole,
+              password: _passwordController.text,
+              avatarUrl: _avatarPath,
+              position: _positionController.text.trim(),
+            );
+            
+            await widget.usersBox.put(id, newUser);
+            
+            if (context.mounted) {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Пользователь ${newUser.displayName} создан')),
+              );
+            }
+          },
+          child: const Text('Создать'),
+        ),
+      ],
+    );
+  }
+
+  String _getRoleText(Role role) {
+    switch (role) {
+      case Role.user:
+        return 'Пользователь';
+      case Role.moderator:
+        return 'Модератор';
+      case Role.adminUserManager:
+        return 'Админ учёток';
+      case Role.adminSuper:
+        return 'Супер-админ';
+      case Role.support:
+        return 'Поддержка';
+    }
+  }
+}
+
 class _LoginDialog extends StatefulWidget {
   const _LoginDialog({super.key});
 
@@ -722,28 +898,25 @@ class ServicesCatalog extends StatelessWidget {
       itemCount: kDemoServices.length,
       itemBuilder: (context, index) {
         final s = kDemoServices[index];
-        return TweenAnimationBuilder<double>(
-          duration: Duration(milliseconds: 400 + (index * 100)),
-          tween: Tween(begin: 0.0, end: 1.0),
-          builder: (context, value, child) {
-            return Opacity(
-              opacity: value,
-              child: Transform.translate(
-                offset: Offset(30 * (1 - value), 0),
-                child: child,
-              ),
-            );
-          },
-          child: Card(
+        return Card(
             margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             elevation: 2,
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => NewRequestPage(service: s)),
-                );
+                if (s.subcategories.isNotEmpty) {
+                  // Если есть подкатегории, показываем их
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => SubcategoriesPage(service: s)),
+                  );
+                } else {
+                  // Иначе открываем форму создания заявки
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => NewRequestPage(service: s)),
+                  );
+                }
               },
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -791,7 +964,6 @@ class ServicesCatalog extends StatelessWidget {
                 ),
               ),
             ),
-          ),
         );
       },
     );
@@ -799,15 +971,104 @@ class ServicesCatalog extends StatelessWidget {
 
   IconData _getServiceIcon(String serviceId) {
     switch (serviceId) {
-      case 'sick_leave':
-        return Icons.medical_services_outlined;
+      case 'hr_documents':
+        return Icons.description_outlined;
       case 'vacation':
         return Icons.beach_access_outlined;
-      case 'child_support':
-        return Icons.family_restroom_outlined;
+      case 'medical':
+        return Icons.medical_services_outlined;
+      case 'social_benefits':
+        return Icons.volunteer_activism_outlined;
+      case 'training':
+        return Icons.school_outlined;
+      case 'workplace':
+        return Icons.business_center_outlined;
+      case 'retirement':
+        return Icons.elderly_outlined;
+      case 'other':
+        return Icons.help_outline;
       default:
         return Icons.description_outlined;
     }
+  }
+}
+
+class SubcategoriesPage extends StatelessWidget {
+  const SubcategoriesPage({super.key, required this.service});
+  final Service service;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(service.title),
+      ),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(8),
+        itemCount: service.subcategories.length,
+        itemBuilder: (context, index) {
+          final sub = service.subcategories[index];
+          return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              elevation: 2,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => NewRequestPage(service: sub)),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.description_outlined,
+                          color: Theme.of(context).colorScheme.secondary,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              sub.title,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              sub.description,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: Colors.grey[400],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          );
+        },
+      ),
+    );
   }
 }
 
@@ -1037,120 +1298,366 @@ class SupportChatPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const _SupportChatView();
+    final usersBox = Hive.box<AppUser>('usersBox');
+    final current = usersBox.get('current');
+    final isSupport = current?.role == Role.support;
+    
+    if (isSupport) {
+      // Для поддержки показываем список тикетов
+      return const SupportTicketsListPage();
+    } else {
+      // Для пользователей показываем их тикеты или форму создания
+      return const UserSupportPage();
+    }
   }
 }
 
-class _SupportChatView extends StatefulWidget {
-  const _SupportChatView();
+// Страница для пользователей - создание и просмотр своих тикетов
+class UserSupportPage extends StatelessWidget {
+  const UserSupportPage({super.key});
 
   @override
-  State<_SupportChatView> createState() => _SupportChatViewState();
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: Hive.openBox<SupportTicket>('supportTickets'),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        
+        final box = Hive.box<SupportTicket>('supportTickets');
+        final usersBox = Hive.box<AppUser>('usersBox');
+        final current = usersBox.get('current');
+        final userId = current?.id ?? 'guest';
+        
+        return Scaffold(
+          appBar: AppBar(title: const Text('Поддержка')),
+          body: ValueListenableBuilder(
+            valueListenable: box.listenable(),
+            builder: (context, Box<SupportTicket> b, _) {
+              final myTickets = b.values.where((t) => t.userId == userId).toList();
+              
+              if (myTickets.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.support_agent, size: 80, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text('У вас пока нет обращений', style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 32),
+                      FilledButton.icon(
+                        onPressed: () => _showCreateTicketDialog(context, current),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Создать обращение'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              
+              return ListView.builder(
+                padding: const EdgeInsets.all(8),
+                itemCount: myTickets.length,
+                itemBuilder: (context, index) {
+                  final ticket = myTickets[index];
+                  final key = b.keys.firstWhere((k) => b.get(k)?.id == ticket.id);
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: ticket.isResolved ? Colors.green : Colors.orange,
+                        child: Icon(
+                          ticket.isResolved ? Icons.check : Icons.pending,
+                          color: Colors.white,
+                        ),
+                      ),
+                      title: Text(ticket.subject),
+                      subtitle: Text('${ticket.messages.length} сообщений'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SupportChatDetailPage(ticketKey: key as int),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _showCreateTicketDialog(context, current),
+            icon: const Icon(Icons.add),
+            label: const Text('Новое обращение'),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCreateTicketDialog(BuildContext context, AppUser? current) {
+    final subjectController = TextEditingController();
+    final messageController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Новое обращение в поддержку'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: subjectController,
+              decoration: const InputDecoration(
+                labelText: 'Тема обращения',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: messageController,
+              decoration: const InputDecoration(
+                labelText: 'Сообщение',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (subjectController.text.trim().isEmpty || messageController.text.trim().isEmpty) {
+                return;
+              }
+              
+              final box = Hive.box<SupportTicket>('supportTickets');
+              final ticket = SupportTicket(
+                id: UniqueKey().toString(),
+                userId: current?.id ?? 'guest',
+                userName: current?.displayName ?? 'Гость',
+                subject: subjectController.text.trim(),
+                createdAt: DateTime.now(),
+                messages: [
+                  Message(
+                    id: UniqueKey().toString(),
+                    senderUserId: current?.id ?? 'guest',
+                    text: messageController.text.trim(),
+                    createdAt: DateTime.now(),
+                  ),
+                ],
+              );
+              
+              await box.add(ticket);
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Обращение создано')),
+                );
+              }
+            },
+            child: const Text('Создать'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _SupportChatViewState extends State<_SupportChatView> {
-  final TextEditingController _c = TextEditingController();
+// Страница для поддержки - список всех тикетов
+class SupportTicketsListPage extends StatelessWidget {
+  const SupportTicketsListPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: Hive.openBox<SupportTicket>('supportTickets'),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        
+        final box = Hive.box<SupportTicket>('supportTickets');
+        
+        return Scaffold(
+          appBar: AppBar(title: const Text('Запросы в поддержку')),
+          body: ValueListenableBuilder(
+            valueListenable: box.listenable(),
+            builder: (context, Box<SupportTicket> b, _) {
+              final tickets = b.values.toList();
+              
+              if (tickets.isEmpty) {
+                return const Center(child: Text('Нет обращений'));
+              }
+              
+              return ListView.builder(
+                padding: const EdgeInsets.all(8),
+                itemCount: tickets.length,
+                itemBuilder: (context, index) {
+                  final ticket = tickets[index];
+                  final key = b.keys.elementAt(index);
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: ticket.isResolved ? Colors.green : Colors.orange,
+                        child: Icon(
+                          ticket.isResolved ? Icons.check : Icons.pending,
+                          color: Colors.white,
+                        ),
+                      ),
+                      title: Text(ticket.subject),
+                      subtitle: Text('От: ${ticket.userName} • ${ticket.messages.length} сообщений'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SupportChatDetailPage(ticketKey: key as int),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+// Страница детального чата по тикету
+class SupportChatDetailPage extends StatefulWidget {
+  const SupportChatDetailPage({super.key, required this.ticketKey});
+  final int ticketKey;
+
+  @override
+  State<SupportChatDetailPage> createState() => _SupportChatDetailPageState();
+}
+
+class _SupportChatDetailPageState extends State<SupportChatDetailPage> {
+  final TextEditingController _messageController = TextEditingController();
 
   @override
   void dispose() {
-    _c.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: Hive.openBox<Message>('supportChat'),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final box = Hive.box<Message>('supportChat');
-        final usersBox = Hive.box<AppUser>('usersBox');
-        final current = usersBox.get('current');
-        final isSupport = current?.role == Role.support;
-        
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Чат с поддержкой'),
-            actions: [
-              if (isSupport)
-                IconButton(
-                  icon: const Icon(Icons.list),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SupportRequestsPage()),
-                  ),
-                ),
-            ],
-          ),
-          body: Column(
-            children: [
-              Expanded(
-                child: ValueListenableBuilder(
-                  valueListenable: box.listenable(),
-                  builder: (context, Box<Message> b, _) {
-                    final keys = b.keys.toList();
-                    return ListView.builder(
-                      padding: const EdgeInsets.all(12),
-                      itemCount: keys.length,
-                      itemBuilder: (context, index) {
-                        final m = b.get(keys[index])!;
-                        final isMe = m.senderUserId == (current?.id ?? 'guest');
-                        return Align(
-                          alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(vertical: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isMe ? Colors.indigo.shade100 : Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(m.text),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
+    final box = Hive.box<SupportTicket>('supportTickets');
+    final ticket = box.get(widget.ticketKey)!;
+    final usersBox = Hive.box<AppUser>('usersBox');
+    final current = usersBox.get('current');
+    final isSupport = current?.role == Role.support;
+    
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(ticket.subject),
+        actions: [
+          if (isSupport && !ticket.isResolved)
+            IconButton(
+              icon: const Icon(Icons.check_circle),
+              onPressed: () async {
+                await box.put(widget.ticketKey, ticket.copyWith(isResolved: true));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Тикет закрыт')),
+                  );
+                }
+              },
+              tooltip: 'Закрыть тикет',
+            ),
+        ],
+      ),
+      body: Column(
+        children: [
+          if (ticket.isResolved)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: Colors.green.shade100,
+              child: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text('Обращение решено', style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
               ),
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _c,
-                          decoration: const InputDecoration(
-                            hintText: 'Напишите сообщение...',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.send),
-                        onPressed: () async {
-                          final text = _c.text.trim();
-                          if (text.isEmpty) return;
-                          await box.add(Message(
-                            id: UniqueKey().toString(),
-                            senderUserId: current?.id ?? 'guest',
-                            text: text,
-                            createdAt: DateTime.now(),
-                          ));
-                          _c.clear();
-                        },
-                      )
-                    ],
+            ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: ticket.messages.length,
+              itemBuilder: (context, index) {
+                final message = ticket.messages[index];
+                final isMe = message.senderUserId == (current?.id ?? 'guest');
+                return Align(
+                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isMe ? Theme.of(context).colorScheme.primaryContainer : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(message.text),
                   ),
-                ),
-              )
-            ],
+                );
+              },
+            ),
           ),
-        );
-      },
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: const InputDecoration(
+                        hintText: 'Напишите сообщение...',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.send),
+                    onPressed: () async {
+                      final text = _messageController.text.trim();
+                      if (text.isEmpty) return;
+                      
+                      final newMessage = Message(
+                        id: UniqueKey().toString(),
+                        senderUserId: current?.id ?? 'guest',
+                        text: text,
+                        createdAt: DateTime.now(),
+                      );
+                      
+                      final updatedTicket = ticket.copyWith(
+                        messages: [...ticket.messages, newMessage],
+                      );
+                      
+                      await box.put(widget.ticketKey, updatedTicket);
+                      _messageController.clear();
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
