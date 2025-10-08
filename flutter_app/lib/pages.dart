@@ -1,8 +1,29 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'models.dart';
 
 const String requestsBoxName = 'requestsBox';
+
+// Вспомогательная функция для получения ImageProvider
+ImageProvider? getAvatarImageProvider(String? avatarPath) {
+  if (avatarPath == null || avatarPath.isEmpty) return null;
+  
+  if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
+    return NetworkImage(avatarPath);
+  } else {
+    return FileImage(File(avatarPath));
+  }
+}
+
+class _TabsData {
+  final List<Widget> pages;
+  final List<NavigationDestination> destinations;
+  
+  _TabsData({required this.pages, required this.destinations});
+}
 
 class ShellPage extends StatefulWidget {
   const ShellPage({super.key});
@@ -29,39 +50,90 @@ class _ShellPageState extends State<ShellPage> {
       builder: (context, Box<AppUser> box, _) {
         final current = box.get('current');
         final isAuthorized = current != null && current.id != 'guest';
-        // Restrict tabs for support role: only Account + Support
-        final isSupport = current?.role == Role.support;
-        final pages = isSupport
-            ? [
-                AccountPage(current: isAuthorized ? current : null, usersBox: usersBox),
-                const SupportChatPage(),
-              ]
-            : [
-                AccountPage(current: isAuthorized ? current : null, usersBox: usersBox),
-                const RequestsRootPage(),
-                const InfoPage(),
-                const SupportChatPage(),
-              ];
+        final role = current?.role;
+        
+        final tabsData = _getTabsForRole(role, isAuthorized, current, usersBox);
+        
         return Scaffold(
-          body: pages[_index],
+          body: tabsData.pages[_index.clamp(0, tabsData.pages.length - 1)],
           bottomNavigationBar: NavigationBar(
-            selectedIndex: _index.clamp(0, pages.length - 1),
+            selectedIndex: _index.clamp(0, tabsData.pages.length - 1),
             onDestinationSelected: (i) => setState(() => _index = i),
-            destinations: isSupport
-                ? const [
-                    NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
-                    NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
-                  ]
-                : const [
-                    NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
-                    NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Заявки'),
-                    NavigationDestination(icon: Icon(Icons.info_outline), selectedIcon: Icon(Icons.info), label: 'Инфо'),
-                    NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
-                  ],
+            destinations: tabsData.destinations,
           ),
         );
       },
     );
+  }
+
+  _TabsData _getTabsForRole(Role? role, bool isAuthorized, AppUser? current, Box<AppUser> usersBox) {
+    if (!isAuthorized || role == null) {
+      return _TabsData(
+        pages: [AccountPage(current: null, usersBox: usersBox)],
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
+        ],
+      );
+    }
+    
+    switch (role) {
+      case Role.support:
+        return _TabsData(
+          pages: [
+            AccountPage(current: current, usersBox: usersBox),
+            const SupportChatPage(),
+          ],
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
+            NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
+          ],
+        );
+      case Role.moderator:
+        return _TabsData(
+          pages: [
+            AccountPage(current: current, usersBox: usersBox),
+            const RequestsRootPage(),
+            const InfoPage(),
+          ],
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
+            NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Заявки'),
+            NavigationDestination(icon: Icon(Icons.info_outline), selectedIcon: Icon(Icons.info), label: 'Инфо'),
+          ],
+        );
+      case Role.adminUserManager:
+      case Role.adminSuper:
+        return _TabsData(
+          pages: [
+            AccountPage(current: current, usersBox: usersBox),
+            const UsersManagementPage(),
+            const RequestsRootPage(),
+            const InfoPage(),
+          ],
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
+            NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: 'Пользователи'),
+            NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Заявки'),
+            NavigationDestination(icon: Icon(Icons.info_outline), selectedIcon: Icon(Icons.info), label: 'Инфо'),
+          ],
+        );
+      case Role.user:
+      default:
+        return _TabsData(
+          pages: [
+            AccountPage(current: current, usersBox: usersBox),
+            const RequestsRootPage(),
+            const InfoPage(),
+            const SupportChatPage(),
+          ],
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
+            NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Заявки'),
+            NavigationDestination(icon: Icon(Icons.info_outline), selectedIcon: Icon(Icons.info), label: 'Инфо'),
+            NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
+          ],
+        );
+    }
   }
 }
 
@@ -80,33 +152,59 @@ class AccountPage extends StatelessWidget {
 
   Widget _buildUnauthorizedView(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.person_outline,
-            size: 80,
-            color: Colors.grey,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Авторизация',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: Colors.grey[600],
+      child: TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 800),
+        tween: Tween(begin: 0.0, end: 1.0),
+        builder: (context, value, child) {
+          return Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, 20 * (1 - value)),
+              child: child,
             ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Войдите в систему, чтобы отправлять заявки',
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 32),
-          FilledButton.icon(
-            onPressed: () => showDialog(context: context, builder: (_) => const _LoginDialog()),
-            icon: const Icon(Icons.login),
-            label: const Text('Войти'),
-          ),
-        ],
+          );
+        },
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.person_outline,
+                size: 80,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'Авторизация',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 48),
+              child: Text(
+                'Войдите в систему, чтобы отправлять заявки',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: () => showDialog(context: context, builder: (_) => const _LoginDialog()),
+              icon: const Icon(Icons.login),
+              label: const Text('Войти'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -118,48 +216,90 @@ class AccountPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Профиль пользователя
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundImage: current!.avatarUrl != null 
-                          ? NetworkImage(current!.avatarUrl!)
-                          : null,
-                      child: current!.avatarUrl == null 
-                          ? const Icon(Icons.person, size: 40)
-                          : null,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            current!.displayName,
-                            style: Theme.of(context).textTheme.headlineSmall,
+            // Профиль пользователя с анимацией
+            TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 600),
+              tween: Tween(begin: 0.0, end: 1.0),
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Transform.scale(
+                    scale: 0.8 + (0.2 * value),
+                    child: child,
+                  ),
+                );
+              },
+              child: Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Hero(
+                        tag: 'user_avatar',
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
-                          if (current!.position != null) ...[
+                          child: CircleAvatar(
+                            radius: 40,
+                            backgroundImage: getAvatarImageProvider(current!.avatarUrl),
+                            child: current!.avatarUrl == null 
+                                ? const Icon(Icons.person, size: 40)
+                                : null,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              current!.position!,
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: Colors.grey[600],
+                              current!.displayName,
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 6),
+                            if (current!.position != null) ...[
+                              Row(
+                                children: [
+                                  Icon(Icons.work_outline, size: 16, color: Colors.grey[600]),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      current!.position!,
+                                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            Chip(
+                              avatar: Icon(
+                                Icons.shield_outlined,
+                                size: 18,
+                                color: _getRoleColor(current!.role),
+                              ),
+                              label: Text(_getRoleDisplayName(current!.role)),
+                              backgroundColor: _getRoleColor(current!.role).shade100,
+                            ),
                           ],
-                          Chip(
-                            label: Text(_getRoleDisplayName(current!.role)),
-                            backgroundColor: _getRoleColor(current!.role).shade100,
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -314,23 +454,54 @@ class _EditProfileDialog extends StatefulWidget {
 class _EditProfileDialogState extends State<_EditProfileDialog> {
   late final TextEditingController _displayName;
   late final TextEditingController _position;
-  late final TextEditingController _avatarUrl;
   final _form = GlobalKey<FormState>();
+  String? _avatarPath;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     _displayName = TextEditingController(text: widget.current.displayName);
     _position = TextEditingController(text: widget.current.position ?? '');
-    _avatarUrl = TextEditingController(text: widget.current.avatarUrl ?? '');
+    _avatarPath = widget.current.avatarUrl;
   }
 
   @override
   void dispose() {
     _displayName.dispose();
     _position.dispose();
-    _avatarUrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        // Копируем изображение в постоянное хранилище приложения
+        final Directory appDir = await getApplicationDocumentsDirectory();
+        final String fileName = 'avatar_${widget.current.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final String newPath = '${appDir.path}/$fileName';
+        
+        // Копируем файл
+        await File(image.path).copy(newPath);
+        
+        setState(() {
+          _avatarPath = newPath;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка при выборе изображения: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -343,17 +514,45 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Предпросмотр аватарки
-              CircleAvatar(
-                radius: 50,
-                backgroundImage: _avatarUrl.text.isNotEmpty 
-                    ? NetworkImage(_avatarUrl.text)
-                    : null,
-                child: _avatarUrl.text.isEmpty 
-                    ? const Icon(Icons.person, size: 50)
-                    : null,
+              // Предпросмотр аватарки с кнопкой выбора
+              Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 60,
+                    backgroundImage: _avatarPath != null
+                        ? (_avatarPath!.startsWith('http')
+                            ? NetworkImage(_avatarPath!)
+                            : FileImage(File(_avatarPath!)) as ImageProvider)
+                        : null,
+                    child: _avatarPath == null
+                        ? const Icon(Icons.person, size: 60)
+                        : null,
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                        onPressed: _pickImage,
+                        tooltip: 'Выбрать из галереи',
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               TextFormField(
                 controller: _displayName,
                 decoration: const InputDecoration(
@@ -371,17 +570,6 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.work),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _avatarUrl,
-                decoration: const InputDecoration(
-                  labelText: 'URL аватарки',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.image),
-                  helperText: 'Например: https://i.pravatar.cc/150?img=1',
-                ),
-                onChanged: (value) => setState(() {}), // Обновляем предпросмотр
               ),
             ],
           ),
@@ -403,7 +591,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
               displayName: _displayName.text.trim(),
               role: widget.current.role,
               password: widget.current.password,
-              avatarUrl: _avatarUrl.text.trim().isEmpty ? null : _avatarUrl.text.trim(),
+              avatarUrl: _avatarPath,
               position: _position.text.trim().isEmpty ? null : _position.text.trim(),
             );
             
@@ -521,27 +709,97 @@ class ServicesCatalog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
       itemCount: kDemoServices.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final s = kDemoServices[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: ListTile(
-            title: Text(s.title, style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(s.description),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => NewRequestPage(service: s)),
-              );
-            },
+        return TweenAnimationBuilder<double>(
+          duration: Duration(milliseconds: 400 + (index * 100)),
+          tween: Tween(begin: 0.0, end: 1.0),
+          builder: (context, value, child) {
+            return Opacity(
+              opacity: value,
+              child: Transform.translate(
+                offset: Offset(30 * (1 - value), 0),
+                child: child,
+              ),
+            );
+          },
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            elevation: 2,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => NewRequestPage(service: s)),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        _getServiceIcon(s.id),
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.title,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            s.description,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Colors.grey[400],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },
     );
+  }
+
+  IconData _getServiceIcon(String serviceId) {
+    switch (serviceId) {
+      case 'sick_leave':
+        return Icons.medical_services_outlined;
+      case 'vacation':
+        return Icons.beach_access_outlined;
+      case 'child_support':
+        return Icons.family_restroom_outlined;
+      default:
+        return Icons.description_outlined;
+    }
   }
 }
 
@@ -621,6 +879,122 @@ class ModeratorQueuePage extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+class UsersManagementPage extends StatelessWidget {
+  const UsersManagementPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final usersBox = Hive.box<AppUser>('usersBox');
+    
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Управление пользователями'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_add),
+            onPressed: () => _showAddUserDialog(context, usersBox),
+            tooltip: 'Добавить пользователя',
+          ),
+        ],
+      ),
+      body: ValueListenableBuilder(
+        valueListenable: usersBox.listenable(),
+        builder: (context, Box<AppUser> box, _) {
+          final users = box.values.where((u) => u.id != 'guest' && u.id != 'current').toList();
+          
+          return ListView.builder(
+            padding: const EdgeInsets.all(8),
+            itemCount: users.length,
+            itemBuilder: (context, index) {
+              final user = users[index];
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: getAvatarImageProvider(user.avatarUrl),
+                    child: user.avatarUrl == null ? const Icon(Icons.person) : null,
+                  ),
+                  title: Text(user.displayName),
+                  subtitle: Text('${user.position ?? 'Без должности'} • ${_getRoleText(user.role)}'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () => _showEditUserDialog(context, usersBox, user),
+                        tooltip: 'Редактировать',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteUser(context, usersBox, user),
+                        tooltip: 'Удалить',
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  String _getRoleText(Role role) {
+    switch (role) {
+      case Role.user: return 'Пользователь';
+      case Role.moderator: return 'Модератор';
+      case Role.adminUserManager: return 'Админ учёток';
+      case Role.adminSuper: return 'Супер-админ';
+      case Role.support: return 'Поддержка';
+    }
+  }
+
+  void _showAddUserDialog(BuildContext context, Box<AppUser> usersBox) {
+    // TODO: Implement add user dialog
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Функция добавления пользователя в разработке')),
+    );
+  }
+
+  void _showEditUserDialog(BuildContext context, Box<AppUser> usersBox, AppUser user) {
+    // TODO: Implement edit user dialog
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Функция редактирования пользователя в разработке')),
+    );
+  }
+
+  void _deleteUser(BuildContext context, Box<AppUser> usersBox, AppUser user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удалить пользователя?'),
+        content: Text('Вы уверены, что хотите удалить ${user.displayName}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true) {
+      await usersBox.delete(user.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${user.displayName} удален')),
+        );
+      }
+    }
   }
 }
 
@@ -871,7 +1245,7 @@ class _NewRequestPageState extends State<NewRequestPage> {
                   if (!_formKey.currentState!.validate()) return;
                   final box = await Hive.openBox<ServiceRequest>(requestsBoxName);
                   final current = Hive.box<AppUser>('usersBox').get('current');
-                  if (current == null || current.role == Role.user && current.login == 'user') {
+                  if (current == null || current.id == 'guest') {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Войдите в аккаунт, чтобы отправлять заявки')));
                     return;
                   }
