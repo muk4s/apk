@@ -44,59 +44,24 @@ class _ShellPageState extends State<ShellPage> {
               ];
         return Scaffold(
           body: pages[_index],
-          bottomNavigationBar: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              NavigationBar(
-                selectedIndex: _index.clamp(0, pages.length - 1),
-                onDestinationSelected: (i) => setState(() => _index = i),
-                destinations: isSupport
-                    ? const [
-                        NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
-                        NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
-                      ]
-                    : const [
-                        NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
-                        NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Заявки'),
-                        NavigationDestination(icon: Icon(Icons.info_outline), selectedIcon: Icon(Icons.info), label: 'Инфо'),
-                        NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
-                      ],
-              ),
-              // Кнопка выхода для авторизованных пользователей
-              if (isAuthorized)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _logout(context, usersBox),
-                      icon: const Icon(Icons.logout),
-                      label: const Text('Выйти'),
-                    ),
-                  ),
-                ),
-            ],
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _index.clamp(0, pages.length - 1),
+            onDestinationSelected: (i) => setState(() => _index = i),
+            destinations: isSupport
+                ? const [
+                    NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
+                    NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
+                  ]
+                : const [
+                    NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Аккаунт'),
+                    NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Заявки'),
+                    NavigationDestination(icon: Icon(Icons.info_outline), selectedIcon: Icon(Icons.info), label: 'Инфо'),
+                    NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Поддержка'),
+                  ],
           ),
         );
       },
     );
-  }
-
-  void _logout(BuildContext context, Box<AppUser>? usersBox) async {
-    if (usersBox != null) {
-      await usersBox.put('current', const AppUser(
-        id: 'guest',
-        login: 'guest',
-        displayName: 'Гость',
-        role: Role.user,
-        password: '',
-      ));
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Вы вышли из системы')),
-        );
-      }
-    }
   }
 }
 
@@ -147,57 +112,69 @@ class AccountPage extends StatelessWidget {
   }
 
   Widget _buildAuthorizedView(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Профиль пользователя
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundImage: current!.avatarUrl != null 
-                        ? NetworkImage(current!.avatarUrl!)
-                        : null,
-                    child: current!.avatarUrl == null 
-                        ? const Icon(Icons.person, size: 40)
-                        : null,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          current!.displayName,
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 4),
-                        if (current!.position != null) ...[
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Профиль пользователя
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundImage: current!.avatarUrl != null 
+                          ? NetworkImage(current!.avatarUrl!)
+                          : null,
+                      child: current!.avatarUrl == null 
+                          ? const Icon(Icons.person, size: 40)
+                          : null,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            current!.position!,
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: Colors.grey[600],
-                            ),
+                            current!.displayName,
+                            style: Theme.of(context).textTheme.headlineSmall,
                           ),
                           const SizedBox(height: 4),
+                          if (current!.position != null) ...[
+                            Text(
+                              current!.position!,
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                          ],
+                          Chip(
+                            label: Text(_getRoleDisplayName(current!.role)),
+                            backgroundColor: _getRoleColor(current!.role).shade100,
+                          ),
                         ],
-                        Chip(
-                          label: Text(_getRoleDisplayName(current!.role)),
-                          backgroundColor: _getRoleColor(current!.role).shade100,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 16),
+            
+            // Кнопка редактирования профиля
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showEditProfileDialog(context),
+                icon: const Icon(Icons.edit),
+                label: const Text('Редактировать профиль'),
+              ),
+            ),
+            const SizedBox(height: 24),
           
           // Админ панель
           if (current!.role == Role.adminUserManager || current!.role == Role.adminSuper) ...[
@@ -247,9 +224,50 @@ class AccountPage extends StatelessWidget {
             const Text('• moderator / moderator123 (Модератор)'),
             const Text('• support / support123 (Поддержка)'),
             const Text('• user / user123 (Пользователь)'),
+            const SizedBox(height: 24),
           ],
-        ],
+          
+          // Кнопка выхода
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _logout(context),
+              icon: const Icon(Icons.logout),
+              label: const Text('Выйти'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ],
+        ),
       ),
+    );
+  }
+
+  void _logout(BuildContext context) async {
+    if (usersBox != null) {
+      await usersBox!.put('current', const AppUser(
+        id: 'guest',
+        login: 'guest',
+        displayName: 'Гость',
+        role: Role.user,
+        password: '',
+      ));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Вы вышли из системы')),
+        );
+      }
+    }
+  }
+
+  void _showEditProfileDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => _EditProfileDialog(current: current!, usersBox: usersBox!),
     );
   }
 
@@ -281,6 +299,129 @@ class AccountPage extends StatelessWidget {
       case Role.support:
         return Colors.green;
     }
+  }
+}
+
+class _EditProfileDialog extends StatefulWidget {
+  const _EditProfileDialog({super.key, required this.current, required this.usersBox});
+  final AppUser current;
+  final Box<AppUser> usersBox;
+
+  @override
+  State<_EditProfileDialog> createState() => _EditProfileDialogState();
+}
+
+class _EditProfileDialogState extends State<_EditProfileDialog> {
+  late final TextEditingController _displayName;
+  late final TextEditingController _position;
+  late final TextEditingController _avatarUrl;
+  final _form = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _displayName = TextEditingController(text: widget.current.displayName);
+    _position = TextEditingController(text: widget.current.position ?? '');
+    _avatarUrl = TextEditingController(text: widget.current.avatarUrl ?? '');
+  }
+
+  @override
+  void dispose() {
+    _displayName.dispose();
+    _position.dispose();
+    _avatarUrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Редактировать профиль'),
+      content: Form(
+        key: _form,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Предпросмотр аватарки
+              CircleAvatar(
+                radius: 50,
+                backgroundImage: _avatarUrl.text.isNotEmpty 
+                    ? NetworkImage(_avatarUrl.text)
+                    : null,
+                child: _avatarUrl.text.isEmpty 
+                    ? const Icon(Icons.person, size: 50)
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _displayName,
+                decoration: const InputDecoration(
+                  labelText: 'ФИО',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите ФИО' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _position,
+                decoration: const InputDecoration(
+                  labelText: 'Должность',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.work),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _avatarUrl,
+                decoration: const InputDecoration(
+                  labelText: 'URL аватарки',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.image),
+                  helperText: 'Например: https://i.pravatar.cc/150?img=1',
+                ),
+                onChanged: (value) => setState(() {}), // Обновляем предпросмотр
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: () async {
+            if (!_form.currentState!.validate()) return;
+            
+            // Создаем обновленного пользователя
+            final updatedUser = AppUser(
+              id: widget.current.id,
+              login: widget.current.login,
+              displayName: _displayName.text.trim(),
+              role: widget.current.role,
+              password: widget.current.password,
+              avatarUrl: _avatarUrl.text.trim().isEmpty ? null : _avatarUrl.text.trim(),
+              position: _position.text.trim().isEmpty ? null : _position.text.trim(),
+            );
+            
+            // Обновляем в базе
+            await widget.usersBox.put(widget.current.id, updatedUser);
+            await widget.usersBox.put('current', updatedUser);
+            
+            if (context.mounted) {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Профиль обновлен')),
+              );
+            }
+          },
+          child: const Text('Сохранить'),
+        ),
+      ],
+    );
   }
 }
 
